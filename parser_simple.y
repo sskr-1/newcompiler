@@ -59,17 +59,19 @@ Program* root = nullptr;
 
 /* Non-terminals */
 %type <program> program
-%type <decl> declaration function_definition
+%type <decl> declaration function_definition variable_declaration
 %type <type_node> type_specifier
 %type <block> compound_statement
 %type <stmt> statement expression_statement selection_statement
-%type <stmt> iteration_statement jump_statement
+%type <stmt> iteration_statement jump_statement statement_list
 %type <expr> expression assignment_expression conditional_expression
 %type <expr> logical_or_expression logical_and_expression equality_expression
 %type <expr> relational_expression additive_expression multiplicative_expression
 %type <expr> unary_expression postfix_expression primary_expression constant
+%type <expr> argument_expression_list
 %type <un_op> unary_operator
 %type <bin_op> assignment_operator
+%type <node> parameter_list parameter_declaration
 
 /* Operator precedence */
 %right ASSIGN PLUS_ASSIGN MINUS_ASSIGN MULT_ASSIGN DIV_ASSIGN MOD_ASSIGN
@@ -102,7 +104,11 @@ program:
 
 declaration:
     function_definition { $$ = $1; }
-    | type_specifier IDENTIFIER SEMICOLON {
+    | variable_declaration { $$ = $1; }
+    ;
+
+variable_declaration:
+    type_specifier IDENTIFIER SEMICOLON {
         auto var_decl = new VariableDeclaration($2, std::unique_ptr<Type>((Type*)$1));
         $$ = var_decl;
         free($2);
@@ -113,6 +119,12 @@ declaration:
         $$ = var_decl;
         free($2);
     }
+    | type_specifier IDENTIFIER LBRACKET INT_LITERAL RBRACKET SEMICOLON {
+        auto array_type = std::make_unique<ArrayType>(std::unique_ptr<Type>((Type*)$1), $4);
+        auto var_decl = new VariableDeclaration($2, std::move(array_type));
+        $$ = var_decl;
+        free($2);
+    }
     ;
 
 function_definition:
@@ -120,6 +132,26 @@ function_definition:
         auto func_decl = new FunctionDeclaration($2, std::unique_ptr<Type>((Type*)$1));
         func_decl->body = std::unique_ptr<Block>((Block*)$5);
         $$ = func_decl;
+        free($2);
+    }
+    | type_specifier IDENTIFIER LPAREN parameter_list RPAREN compound_statement {
+        auto func_decl = new FunctionDeclaration($2, std::unique_ptr<Type>((Type*)$1));
+        func_decl->body = std::unique_ptr<Block>((Block*)$6);
+        // TODO: Add parameters from $4
+        $$ = func_decl;
+        free($2);
+    }
+    ;
+
+parameter_list:
+    parameter_declaration { $$ = $1; }
+    | parameter_list COMMA parameter_declaration { $$ = $1; }
+    ;
+
+parameter_declaration:
+    type_specifier IDENTIFIER {
+        // For now, just return a placeholder
+        $$ = nullptr;
         free($2);
     }
     ;
@@ -136,8 +168,21 @@ compound_statement:
     LBRACE RBRACE {
         $$ = new Block();
     }
-    | LBRACE statement RBRACE {
+    | LBRACE statement_list RBRACE {
+        $$ = (Block*)$2;
+    }
+    ;
+
+statement_list:
+    statement {
         auto block = new Block();
+        if ($1) {
+            block->statements.push_back(std::unique_ptr<Statement>((Statement*)$1));
+        }
+        $$ = block;
+    }
+    | statement_list statement {
+        auto block = (Block*)$1;
         if ($2) {
             block->statements.push_back(std::unique_ptr<Statement>((Statement*)$2));
         }
@@ -151,6 +196,7 @@ statement:
     | iteration_statement { $$ = $1; }
     | jump_statement { $$ = $1; }
     | compound_statement { $$ = $1; }
+    | variable_declaration { $$ = $1; }
     ;
 
 expression_statement:
@@ -178,6 +224,20 @@ iteration_statement:
     WHILE LPAREN expression RPAREN statement {
         $$ = new WhileStatement(std::unique_ptr<Expression>((Expression*)$3), 
                                std::unique_ptr<Statement>((Statement*)$5));
+    }
+    | FOR LPAREN expression_statement expression_statement expression RPAREN statement {
+        $$ = new ForStatement(std::unique_ptr<Statement>((Statement*)$3),
+                             std::unique_ptr<Expression>(((ExpressionStatement*)$4)->expression.release()),
+                             std::unique_ptr<Expression>((Expression*)$5),
+                             std::unique_ptr<Statement>((Statement*)$7));
+        delete (ExpressionStatement*)$4;
+    }
+    | FOR LPAREN expression_statement expression_statement RPAREN statement {
+        $$ = new ForStatement(std::unique_ptr<Statement>((Statement*)$3),
+                             std::unique_ptr<Expression>(((ExpressionStatement*)$4)->expression.release()),
+                             nullptr,
+                             std::unique_ptr<Statement>((Statement*)$6));
+        delete (ExpressionStatement*)$4;
     }
     ;
 
@@ -334,12 +394,30 @@ unary_operator:
 
 postfix_expression:
     primary_expression { $$ = $1; }
+    | postfix_expression LPAREN RPAREN {
+        auto func_call = new FunctionCall(std::unique_ptr<Expression>((Expression*)$1));
+        $$ = func_call;
+    }
+    | postfix_expression LPAREN argument_expression_list RPAREN {
+        auto func_call = new FunctionCall(std::unique_ptr<Expression>((Expression*)$1));
+        // TODO: Add arguments from $3
+        $$ = func_call;
+    }
+    | postfix_expression LBRACKET expression RBRACKET {
+        $$ = new ArrayAccess(std::unique_ptr<Expression>((Expression*)$1), 
+                            std::unique_ptr<Expression>((Expression*)$3));
+    }
     | postfix_expression INC {
         $$ = new UnaryOp(UnaryOp::POST_INC, std::unique_ptr<Expression>((Expression*)$1));
     }
     | postfix_expression DEC {
         $$ = new UnaryOp(UnaryOp::POST_DEC, std::unique_ptr<Expression>((Expression*)$1));
     }
+    ;
+
+argument_expression_list:
+    assignment_expression { $$ = $1; }
+    | argument_expression_list COMMA assignment_expression { $$ = $1; }
     ;
 
 primary_expression:
