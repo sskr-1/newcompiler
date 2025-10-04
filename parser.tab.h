@@ -147,7 +147,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 20 "parser.y"
+#line 14 "parser_simple.y"
 
     long long int_val;
     double float_val;
@@ -155,25 +155,19 @@ union YYSTYPE
     char char_val;
     char* str_val;
     
-    ASTNode* node;
-    Expression* expr;
-    Statement* stmt;
-    Declaration* decl;
-    Program* program;
-    Block* block;
-    Type* type_node;
+    void* node;
+    void* expr;
+    void* stmt;
+    void* decl;
+    void* program;
+    void* block;
+    void* type_node;
     
-    std::vector<Parameter>* param_list;
-    Parameter* param;
-    std::vector<ExprPtr>* expr_list;
-    std::vector<StmtPtr>* stmt_list;
-    std::vector<DeclPtr>* decl_list;
-    
-    BinaryOp::Operator bin_op;
-    UnaryOp::Operator un_op;
-    Type::Kind type_kind;
+    int bin_op;
+    int un_op;
+    int type_kind;
 
-#line 177 "parser.tab.h"
+#line 171 "parser.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

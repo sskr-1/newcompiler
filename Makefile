@@ -6,9 +6,8 @@ CXXFLAGS = -std=c++17 -Wall -Wextra -g -O0
 FLEX = flex
 BISON = bison
 
-# Source files
-SOURCES = main.cpp ast.cpp lexer.yy.cc parser.tab.cc
-OBJECTS = $(SOURCES:.cpp=.o) $(SOURCES:.cc=.o)
+# Object files
+OBJECTS = main.o ast.o lexer.yy.o parser.tab.o
 TARGET = compiler
 
 # Generated files
@@ -25,7 +24,7 @@ $(LEXER_SRC): lexer.l
 	$(FLEX) --outfile=$@ $<
 
 # Generate parser from bison file
-$(PARSER_SRC) $(PARSER_HDR): parser.y
+$(PARSER_SRC) $(PARSER_HDR): parser_simple.y
 	$(BISON) --output=$(PARSER_SRC) --defines=$(PARSER_HDR) $<
 
 # Test lexer generation

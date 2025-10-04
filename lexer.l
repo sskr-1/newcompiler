@@ -117,7 +117,3 @@ CHAR            \'([^\'\\]|\\.)\'
 .               { fprintf(stderr, "Unknown character: '%s' at line %d\n", yytext, yylineno); return yytext[0]; }
 
 %%
-
-void yyerror(const char* s) {
-    fprintf(stderr, "Error at line %d: %s\n", yylineno, s);
-}

@@ -2384,7 +2384,3 @@ void yyfree (void * ptr )
 
 #line 119 "lexer.l"
 
-
-void yyerror(const char* s) {
-    fprintf(stderr, "Error at line %d: %s\n", yylineno, s);
-}
