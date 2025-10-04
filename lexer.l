@@ -21,7 +21,6 @@ CHAR            \'([^\'\\]|\\.)\'
 
 %%
 
-/* Keywords */
 "auto"          { return AUTO; }
 "break"         { return BREAK; }
 "case"          { return CASE; }
@@ -57,7 +56,6 @@ CHAR            \'([^\'\\]|\\.)\'
 "volatile"      { return VOLATILE; }
 "while"         { return WHILE; }
 
-/* Operators */
 "+"             { return PLUS; }
 "-"             { return MINUS; }
 "*"             { return MULT; }
@@ -94,7 +92,6 @@ CHAR            \'([^\'\\]|\\.)\'
 "?"             { return QUESTION; }
 ":"             { return COLON; }
 
-/* Delimiters */
 "("             { return LPAREN; }
 ")"             { return RPAREN; }
 "{"             { return LBRACE; }
@@ -106,20 +103,17 @@ CHAR            \'([^\'\\]|\\.)\'
 "."             { return DOT; }
 "->"            { return ARROW; }
 
-/* Literals */
 {INTEGER}       { yylval.int_val = atoll(yytext); return INT_LITERAL; }
 {FLOAT}         { yylval.double_val = atof(yytext); return DOUBLE_LITERAL; }
 {STRING}        { yylval.str_val = strdup(yytext); return STRING_LITERAL; }
 {CHAR}          { yylval.char_val = yytext[1]; return CHAR_LITERAL; }
 {IDENTIFIER}    { yylval.str_val = strdup(yytext); return IDENTIFIER; }
 
-/* Whitespace and comments */
-[ \t\r]+        { /* ignore whitespace */ }
-\n              { /* ignore newlines */ }
-"//".*$         { /* ignore single-line comments */ }
-"/*"([^*]|\*+[^*/])*\*+"/" { /* ignore multi-line comments */ }
+[ \t\r]+        
+\n              
+"//".*$         
+"/*"([^*]|\*+[^*/])*\*+"/"
 
-/* Unknown characters */
 .               { fprintf(stderr, "Unknown character: '%s' at line %d\n", yytext, yylineno); return yytext[0]; }
 
 %%
