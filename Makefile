@@ -2,6 +2,11 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -g -O0
 
+# LLVM settings
+LLVM_CONFIG = llvm-config-20
+LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags)
+LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags --libs core)
+
 # Flex and Bison
 FLEX = flex
 BISON = bison
