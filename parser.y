@@ -189,9 +189,8 @@ parameter:
     ;
 
 struct_declaration:
-    STRUCT IDENTIFIER LBRACE variable_declaration_list RBRACE SEMICOLON {
+    STRUCT IDENTIFIER LBRACE RBRACE SEMICOLON {
         auto struct_decl = new StructDeclaration($2);
-        // Note: variable_declaration_list would need to be implemented
         $$ = struct_decl;
         free($2);
     }
