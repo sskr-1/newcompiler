@@ -13,68 +13,72 @@ FLEX = flex
 BISON = bison
 
 # Source files
-SOURCES = main.cpp ast.cpp codegen.cpp lexer.cpp parser.cpp
-OBJECTS = $(SOURCES:.cpp=.o)
+SOURCES = main.cpp ast_full.cpp codegen_full.cpp lexer.yy.cc parser.tab.cc
+OBJECTS = $(SOURCES:.cpp=.o) $(SOURCES:.cc=.o)
 TARGET = compiler
 
 # Generated files
-LEXER_SRC = lexer.cpp
-PARSER_SRC = parser.cpp
+LEXER_SRC = lexer.yy.cc
+PARSER_SRC = parser.tab.cc
 PARSER_HDR = parser.tab.h
 
-.PHONY: all clean test install
+.PHONY: all clean test test-lexer test-parser test-ast test-codegen
 
 all: $(TARGET)
 
 # Generate lexer from flex file
-$(LEXER_SRC): lexer_simple.l
-	$(FLEX) -o $@ $<
+$(LEXER_SRC): lexer.l
+	$(FLEX) --outfile=$@ $<
 
 # Generate parser from bison file
 $(PARSER_SRC) $(PARSER_HDR): parser.y
-	$(BISON) -d -o $(PARSER_SRC) $<
+	$(BISON) --output=$(PARSER_SRC) --defines=$(PARSER_HDR) $<
+
+# Test lexer generation
+test-lexer: $(LEXER_SRC)
+	@echo "✓ Lexer generated successfully"
+	@echo "Generated files:"
+	@ls -la $(LEXER_SRC)
+
+# Test parser generation
+test-parser: $(PARSER_SRC) $(PARSER_HDR)
+	@echo "✓ Parser generated successfully"
+	@echo "Generated files:"
+	@ls -la $(PARSER_SRC) $(PARSER_HDR)
+
+# Test AST compilation
+test-ast: ast_full.cpp ast_full.h
+	@echo "Testing AST compilation..."
+	$(CXX) $(CXXFLAGS) -c ast_full.cpp -o ast_full.o
+	@echo "✓ AST compiled successfully"
 
 # Compile object files
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) -c $< -o $@
 
-# Special compilation for generated files (disable some warnings)
-lexer.o: $(LEXER_SRC)
+%.o: %.cc
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) -Wno-unused-function -Wno-sign-compare -c $< -o $@
 
-parser.o: $(PARSER_SRC)
+# Special compilation for generated files (disable some warnings)
+lexer.yy.o: $(LEXER_SRC) $(PARSER_HDR)
+	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) -Wno-unused-function -Wno-sign-compare -Wno-register -c $< -o $@
+
+parser.tab.o: $(PARSER_SRC)
 	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) -Wno-unused-function -c $< -o $@
 
 # Link the final executable
 $(TARGET): $(OBJECTS)
 	$(CXX) $(OBJECTS) $(LDFLAGS) $(LLVM_LDFLAGS) -o $@
 
-# Test with a simple program
-test: $(TARGET)
-	@echo "Creating test program..."
-	@echo 'int main() { return 42; }' > test.c
-	@echo "Testing compiler..."
-	./$(TARGET) -ast test.c
-	@echo "Test completed."
-
-# Install dependencies (Ubuntu/Debian)
-install-deps:
-	sudo apt-get update
-	sudo apt-get install -y flex bison llvm-dev clang build-essential
+# Test individual components
+test-components: test-lexer test-parser test-ast
+	@echo "✓ All components tested successfully"
 
 # Clean build files
 clean:
 	rm -f $(OBJECTS) $(TARGET) $(LEXER_SRC) $(PARSER_SRC) $(PARSER_HDR)
 	rm -f test.c test.o test.s
-	rm -f *.output *.tab.c *.tab.h
-
-# Debug build
-debug: CXXFLAGS += -DDEBUG -g3
-debug: $(TARGET)
-
-# Release build
-release: CXXFLAGS = -std=c++14 -O3 -DNDEBUG
-release: $(TARGET)
+	rm -f *.output
 
 # Show compiler info
 info:

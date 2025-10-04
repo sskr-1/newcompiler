@@ -11,8 +11,6 @@ void yyerror(const char* s);
 
 %option noyywrap
 %option yylineno
-%option c++
-%option outfile="lexer.yy.cc"
 
 /* Regular expressions for tokens */
 DIGIT           [0-9]
@@ -182,7 +180,7 @@ NEWLINE         \n
 "/*"            { 
                   /* multi-line comment handling */
                   int c;
-                  while ((c = yyinput()) != 0) {
+                  while ((c = input()) != 0) {
                       if (c == '*') {
                           if ((c = yyinput()) == '/') break;
                           unput(c);
