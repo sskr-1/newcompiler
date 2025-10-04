@@ -182,7 +182,7 @@ NEWLINE         \n
                   int c;
                   while ((c = input()) != 0) {
                       if (c == '*') {
-                          if ((c = yyinput()) == '/') break;
+                          if ((c = input()) == '/') break;
                           unput(c);
                       }
                   }

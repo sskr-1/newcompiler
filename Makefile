@@ -27,7 +27,7 @@ PARSER_HDR = parser.tab.h
 all: $(TARGET)
 
 # Generate lexer from flex file
-$(LEXER_SRC): lexer.l
+$(LEXER_SRC): lexer_simple.l
 	$(FLEX) --outfile=$@ $<
 
 # Generate parser from bison file
@@ -47,7 +47,7 @@ test-parser: $(PARSER_SRC) $(PARSER_HDR)
 	@ls -la $(PARSER_SRC) $(PARSER_HDR)
 
 # Test AST compilation
-test-ast: ast_full.cpp ast_full.h
+test-ast: ast_full.h
 	@echo "Testing AST compilation..."
 	$(CXX) $(CXXFLAGS) -c ast_full.cpp -o ast_full.o
 	@echo "✓ AST compiled successfully"
