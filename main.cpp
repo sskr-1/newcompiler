@@ -1,27 +1,24 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <memory>
 #include "ast.h"
 
 // Forward declarations from flex/bison
 extern FILE* yyin;
 extern int yyparse();
 extern Program* root;
-extern int yylineno;
 
 void printUsage(const char* programName) {
     std::cout << "Usage: " << programName << " [options] <input_file>\n";
     std::cout << "Options:\n";
-    std::cout << "  -ast            Print AST and exit\n";
-    std::cout << "  -h, --help      Show this help message\n";
+    std::cout << "  -ast            Print AST\n";
+    std::cout << "  -h, --help      Show help\n";
 }
 
 int main(int argc, char* argv[]) {
     std::string inputFile;
     bool printAST = false;
     
-    // Parse command line arguments
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         
@@ -31,26 +28,15 @@ int main(int argc, char* argv[]) {
         } else if (arg == "-ast") {
             printAST = true;
         } else if (arg[0] != '-') {
-            if (inputFile.empty()) {
-                inputFile = arg;
-            } else {
-                std::cerr << "Error: Multiple input files specified\n";
-                return 1;
-            }
-        } else {
-            std::cerr << "Error: Unknown option " << arg << "\n";
-            printUsage(argv[0]);
-            return 1;
+            inputFile = arg;
         }
     }
     
     if (inputFile.empty()) {
         std::cerr << "Error: No input file specified\n";
-        printUsage(argv[0]);
         return 1;
     }
     
-    // Open input file
     FILE* file = fopen(inputFile.c_str(), "r");
     if (!file) {
         std::cerr << "Error: Cannot open file " << inputFile << "\n";
@@ -59,7 +45,6 @@ int main(int argc, char* argv[]) {
     
     yyin = file;
     
-    // Parse the input
     std::cout << "Parsing " << inputFile << "...\n";
     int parseResult = yyparse();
     fclose(file);
@@ -76,13 +61,10 @@ int main(int argc, char* argv[]) {
     
     std::cout << "Parse successful!\n";
     
-    // Print AST if requested
     if (printAST) {
         std::cout << "\n=== Abstract Syntax Tree ===\n";
         root->print();
-        std::cout << "\n";
     }
     
-    std::cout << "Compilation completed successfully!\n";
     return 0;
 }

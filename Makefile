@@ -78,7 +78,7 @@ test: $(TARGET)
 
 # Clean build files
 clean:
-	rm -f $(OBJECTS) $(TARGET) $(LEXER_SRC) $(PARSER_SRC) $(PARSER_HDR)
+	rm -f *.o $(TARGET) $(LEXER_SRC) $(PARSER_SRC) $(PARSER_HDR)
 	rm -f test.c *.output
 
 # Show what files we have

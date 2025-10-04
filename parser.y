@@ -5,7 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <memory>
-#include "ast_full.h"
+#include "ast.h"
 
 extern int yylex();
 extern int yylineno;
