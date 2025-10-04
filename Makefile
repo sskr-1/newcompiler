@@ -1,19 +1,13 @@
 # Compiler settings
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -g -O0
-LDFLAGS = 
-
-# LLVM settings
-LLVM_CONFIG = llvm-config-20
-LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags)
-LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter)
 
 # Flex and Bison
 FLEX = flex
 BISON = bison
 
 # Source files
-SOURCES = main.cpp ast_full.cpp codegen_full.cpp lexer.yy.cc parser.tab.cc
+SOURCES = main.cpp ast.cpp lexer.yy.cc parser.tab.cc
 OBJECTS = $(SOURCES:.cpp=.o) $(SOURCES:.cc=.o)
 TARGET = compiler
 
@@ -22,12 +16,12 @@ LEXER_SRC = lexer.yy.cc
 PARSER_SRC = parser.tab.cc
 PARSER_HDR = parser.tab.h
 
-.PHONY: all clean test test-lexer test-parser test-ast test-codegen
+.PHONY: all clean test test-lexer test-parser test-ast test-components
 
 all: $(TARGET)
 
 # Generate lexer from flex file
-$(LEXER_SRC): lexer_simple.l
+$(LEXER_SRC): lexer.l
 	$(FLEX) --outfile=$@ $<
 
 # Generate parser from bison file
@@ -47,43 +41,47 @@ test-parser: $(PARSER_SRC) $(PARSER_HDR)
 	@ls -la $(PARSER_SRC) $(PARSER_HDR)
 
 # Test AST compilation
-test-ast: ast_full.h
+test-ast: ast.h ast.cpp
 	@echo "Testing AST compilation..."
-	$(CXX) $(CXXFLAGS) -c ast_full.cpp -o ast_full.o
+	$(CXX) $(CXXFLAGS) -c ast.cpp -o ast.o
 	@echo "✓ AST compiled successfully"
 
 # Compile object files
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 %.o: %.cc
-	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) -Wno-unused-function -Wno-sign-compare -c $< -o $@
+	$(CXX) $(CXXFLAGS) -Wno-unused-function -Wno-sign-compare -c $< -o $@
 
-# Special compilation for generated files (disable some warnings)
+# Special compilation for generated files
 lexer.yy.o: $(LEXER_SRC) $(PARSER_HDR)
-	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) -Wno-unused-function -Wno-sign-compare -Wno-register -c $< -o $@
+	$(CXX) $(CXXFLAGS) -Wno-unused-function -Wno-sign-compare -Wno-register -c $< -o $@
 
 parser.tab.o: $(PARSER_SRC)
-	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) -Wno-unused-function -c $< -o $@
+	$(CXX) $(CXXFLAGS) -Wno-unused-function -c $< -o $@
 
 # Link the final executable
 $(TARGET): $(OBJECTS)
-	$(CXX) $(OBJECTS) $(LDFLAGS) $(LLVM_LDFLAGS) -o $@
+	$(CXX) $(OBJECTS) -o $@
 
-# Test individual components
+# Test all components
 test-components: test-lexer test-parser test-ast
 	@echo "✓ All components tested successfully"
+
+# Test with sample program
+test: $(TARGET)
+	@echo "Creating test program..."
+	@echo 'int main() { return 42; }' > test.c
+	@echo "Testing compiler..."
+	./$(TARGET) -ast test.c
+	@echo "Test completed."
 
 # Clean build files
 clean:
 	rm -f $(OBJECTS) $(TARGET) $(LEXER_SRC) $(PARSER_SRC) $(PARSER_HDR)
-	rm -f test.c test.o test.s
-	rm -f *.output
+	rm -f test.c *.output
 
-# Show compiler info
+# Show what files we have
 info:
-	@echo "Compiler: $(CXX)"
-	@echo "LLVM Config: $(LLVM_CONFIG)"
-	@echo "LLVM Version: $(shell $(LLVM_CONFIG) --version)"
-	@echo "LLVM CXX Flags: $(LLVM_CXXFLAGS)"
-	@echo "LLVM LD Flags: $(LLVM_LDFLAGS)"
+	@echo "Essential files:"
+	@ls -la *.l *.y *.h *.cpp Makefile 2>/dev/null || true

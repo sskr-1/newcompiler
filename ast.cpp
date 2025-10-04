@@ -8,59 +8,46 @@ void printIndent(int indent) {
     }
 }
 
-// Helper functions
-std::string typeToString(Expression::Type type) {
-    switch (type) {
-        case Expression::INT_TYPE: return "int";
-        case Expression::FLOAT_TYPE: return "float";
-        case Expression::CHAR_TYPE: return "char";
-        case Expression::VOID_TYPE: return "void";
-        case Expression::POINTER_TYPE: return "pointer";
-        case Expression::ARRAY_TYPE: return "array";
-        default: return "unknown";
+// Type implementations
+std::string Type::toString() const {
+    std::string result;
+    
+    if (is_const) result += "const ";
+    if (is_unsigned) result += "unsigned ";
+    
+    switch (kind) {
+        case VOID_TYPE: result += "void"; break;
+        case CHAR_TYPE: result += "char"; break;
+        case SHORT_TYPE: result += "short"; break;
+        case INT_TYPE: result += "int"; break;
+        case LONG_TYPE: result += "long"; break;
+        case FLOAT_TYPE: result += "float"; break;
+        case DOUBLE_TYPE: result += "double"; break;
+        case POINTER_TYPE: result += "pointer"; break;
+        case ARRAY_TYPE: result += "array"; break;
+        case FUNCTION_TYPE: result += "function"; break;
+        case STRUCT_TYPE: result += "struct"; break;
+        case UNION_TYPE: result += "union"; break;
+        case ENUM_TYPE: result += "enum"; break;
     }
+    
+    return result;
 }
 
-std::string binOpToString(BinaryOp::Operator op) {
-    switch (op) {
-        case BinaryOp::ADD: return "+";
-        case BinaryOp::SUB: return "-";
-        case BinaryOp::MUL: return "*";
-        case BinaryOp::DIV: return "/";
-        case BinaryOp::MOD: return "%";
-        case BinaryOp::EQ: return "==";
-        case BinaryOp::NE: return "!=";
-        case BinaryOp::LT: return "<";
-        case BinaryOp::LE: return "<=";
-        case BinaryOp::GT: return ">";
-        case BinaryOp::GE: return ">=";
-        case BinaryOp::AND: return "&&";
-        case BinaryOp::OR: return "||";
-        case BinaryOp::ASSIGN: return "=";
-        case BinaryOp::PLUS_ASSIGN: return "+=";
-        case BinaryOp::MINUS_ASSIGN: return "-=";
-        case BinaryOp::MULT_ASSIGN: return "*=";
-        case BinaryOp::DIV_ASSIGN: return "/=";
-        default: return "unknown";
-    }
+void Type::print(int indent) const {
+    printIndent(indent);
+    std::cout << "Type: " << toString() << std::endl;
 }
 
-std::string unOpToString(UnaryOp::Operator op) {
-    switch (op) {
-        case UnaryOp::PLUS: return "+";
-        case UnaryOp::MINUS: return "-";
-        case UnaryOp::NOT: return "!";
-        case UnaryOp::PRE_INC: return "++";
-        case UnaryOp::PRE_DEC: return "--";
-        case UnaryOp::POST_INC: return "++";
-        case UnaryOp::POST_DEC: return "--";
-        case UnaryOp::DEREF: return "*";
-        case UnaryOp::ADDRESS_OF: return "&";
-        default: return "unknown";
-    }
+std::string PointerType::toString() const {
+    return pointee_type->toString() + "*";
 }
 
-// Literal implementations
+std::string ArrayType::toString() const {
+    return element_type->toString() + "[" + std::to_string(size) + "]";
+}
+
+// Expression implementations
 void IntLiteral::print(int indent) const {
     printIndent(indent);
     std::cout << "IntLiteral: " << value << std::endl;
@@ -87,6 +74,42 @@ void Identifier::print(int indent) const {
 }
 
 // Binary operation implementation
+std::string binOpToString(BinaryOp::Operator op) {
+    switch (op) {
+        case BinaryOp::ADD: return "+";
+        case BinaryOp::SUB: return "-";
+        case BinaryOp::MUL: return "*";
+        case BinaryOp::DIV: return "/";
+        case BinaryOp::MOD: return "%";
+        case BinaryOp::EQ: return "==";
+        case BinaryOp::NE: return "!=";
+        case BinaryOp::LT: return "<";
+        case BinaryOp::LE: return "<=";
+        case BinaryOp::GT: return ">";
+        case BinaryOp::GE: return ">=";
+        case BinaryOp::AND: return "&&";
+        case BinaryOp::OR: return "||";
+        case BinaryOp::BITWISE_AND: return "&";
+        case BinaryOp::BITWISE_OR: return "|";
+        case BinaryOp::BITWISE_XOR: return "^";
+        case BinaryOp::LSHIFT: return "<<";
+        case BinaryOp::RSHIFT: return ">>";
+        case BinaryOp::ASSIGN: return "=";
+        case BinaryOp::PLUS_ASSIGN: return "+=";
+        case BinaryOp::MINUS_ASSIGN: return "-=";
+        case BinaryOp::MULT_ASSIGN: return "*=";
+        case BinaryOp::DIV_ASSIGN: return "/=";
+        case BinaryOp::MOD_ASSIGN: return "%=";
+        case BinaryOp::LSHIFT_ASSIGN: return "<<=";
+        case BinaryOp::RSHIFT_ASSIGN: return ">>=";
+        case BinaryOp::AND_ASSIGN: return "&=";
+        case BinaryOp::OR_ASSIGN: return "|=";
+        case BinaryOp::XOR_ASSIGN: return "^=";
+        case BinaryOp::COMMA: return ",";
+        default: return "unknown";
+    }
+}
+
 void BinaryOp::print(int indent) const {
     printIndent(indent);
     std::cout << "BinaryOp: " << binOpToString(op) << std::endl;
@@ -95,22 +118,32 @@ void BinaryOp::print(int indent) const {
     std::cout << "Left:" << std::endl;
     if (left) {
         left->print(indent + 2);
-    } else {
-        printIndent(indent + 2);
-        std::cout << "null" << std::endl;
     }
     
     printIndent(indent + 1);
     std::cout << "Right:" << std::endl;
     if (right) {
         right->print(indent + 2);
-    } else {
-        printIndent(indent + 2);
-        std::cout << "null" << std::endl;
     }
 }
 
 // Unary operation implementation
+std::string unOpToString(UnaryOp::Operator op) {
+    switch (op) {
+        case UnaryOp::PLUS: return "+";
+        case UnaryOp::MINUS: return "-";
+        case UnaryOp::NOT: return "!";
+        case UnaryOp::BITWISE_NOT: return "~";
+        case UnaryOp::PRE_INC: return "++";
+        case UnaryOp::PRE_DEC: return "--";
+        case UnaryOp::POST_INC: return "++";
+        case UnaryOp::POST_DEC: return "--";
+        case UnaryOp::DEREF: return "*";
+        case UnaryOp::ADDRESS_OF: return "&";
+        default: return "unknown";
+    }
+}
+
 void UnaryOp::print(int indent) const {
     printIndent(indent);
     std::cout << "UnaryOp: " << unOpToString(op) << std::endl;
@@ -119,59 +152,49 @@ void UnaryOp::print(int indent) const {
     std::cout << "Operand:" << std::endl;
     if (operand) {
         operand->print(indent + 2);
-    } else {
-        printIndent(indent + 2);
-        std::cout << "null" << std::endl;
     }
 }
 
-// Function call implementation
 void FunctionCall::print(int indent) const {
     printIndent(indent);
-    std::cout << "FunctionCall: " << name << std::endl;
+    std::cout << "FunctionCall:" << std::endl;
+    
+    printIndent(indent + 1);
+    std::cout << "Function:" << std::endl;
+    if (function) function->print(indent + 2);
     
     if (!arguments.empty()) {
         printIndent(indent + 1);
         std::cout << "Arguments:" << std::endl;
         for (const auto& arg : arguments) {
-            if (arg) {
-                arg->print(indent + 2);
-            }
+            if (arg) arg->print(indent + 2);
         }
     }
 }
 
-// Array access implementation
 void ArrayAccess::print(int indent) const {
     printIndent(indent);
     std::cout << "ArrayAccess:" << std::endl;
     
     printIndent(indent + 1);
     std::cout << "Array:" << std::endl;
-    if (array) {
-        array->print(indent + 2);
-    }
+    if (array) array->print(indent + 2);
     
     printIndent(indent + 1);
     std::cout << "Index:" << std::endl;
-    if (index) {
-        index->print(indent + 2);
-    }
+    if (index) index->print(indent + 2);
 }
 
-// Member access implementation
 void MemberAccess::print(int indent) const {
     printIndent(indent);
     std::cout << "MemberAccess: " << (is_pointer ? "->" : ".") << member << std::endl;
     
     printIndent(indent + 1);
     std::cout << "Object:" << std::endl;
-    if (object) {
-        object->print(indent + 2);
-    }
+    if (object) object->print(indent + 2);
 }
 
-// Expression statement implementation
+// Statement implementations
 void ExpressionStatement::print(int indent) const {
     printIndent(indent);
     std::cout << "ExpressionStatement:" << std::endl;
@@ -180,7 +203,6 @@ void ExpressionStatement::print(int indent) const {
     }
 }
 
-// Block implementation
 void Block::print(int indent) const {
     printIndent(indent);
     std::cout << "Block:" << std::endl;
@@ -192,22 +214,17 @@ void Block::print(int indent) const {
     }
 }
 
-// If statement implementation
 void IfStatement::print(int indent) const {
     printIndent(indent);
     std::cout << "IfStatement:" << std::endl;
     
     printIndent(indent + 1);
     std::cout << "Condition:" << std::endl;
-    if (condition) {
-        condition->print(indent + 2);
-    }
+    if (condition) condition->print(indent + 2);
     
     printIndent(indent + 1);
     std::cout << "Then:" << std::endl;
-    if (then_stmt) {
-        then_stmt->print(indent + 2);
-    }
+    if (then_stmt) then_stmt->print(indent + 2);
     
     if (else_stmt) {
         printIndent(indent + 1);
@@ -216,25 +233,19 @@ void IfStatement::print(int indent) const {
     }
 }
 
-// While statement implementation
 void WhileStatement::print(int indent) const {
     printIndent(indent);
     std::cout << "WhileStatement:" << std::endl;
     
     printIndent(indent + 1);
     std::cout << "Condition:" << std::endl;
-    if (condition) {
-        condition->print(indent + 2);
-    }
+    if (condition) condition->print(indent + 2);
     
     printIndent(indent + 1);
     std::cout << "Body:" << std::endl;
-    if (body) {
-        body->print(indent + 2);
-    }
+    if (body) body->print(indent + 2);
 }
 
-// For statement implementation
 void ForStatement::print(int indent) const {
     printIndent(indent);
     std::cout << "ForStatement:" << std::endl;
@@ -259,12 +270,9 @@ void ForStatement::print(int indent) const {
     
     printIndent(indent + 1);
     std::cout << "Body:" << std::endl;
-    if (body) {
-        body->print(indent + 2);
-    }
+    if (body) body->print(indent + 2);
 }
 
-// Return statement implementation
 void ReturnStatement::print(int indent) const {
     printIndent(indent);
     std::cout << "ReturnStatement:" << std::endl;
@@ -276,28 +284,20 @@ void ReturnStatement::print(int indent) const {
     }
 }
 
-// Break statement implementation
 void BreakStatement::print(int indent) const {
     printIndent(indent);
     std::cout << "BreakStatement" << std::endl;
 }
 
-// Continue statement implementation
 void ContinueStatement::print(int indent) const {
     printIndent(indent);
     std::cout << "ContinueStatement" << std::endl;
 }
 
-// Variable declaration implementation
+// Declaration implementations
 void VariableDeclaration::print(int indent) const {
     printIndent(indent);
-    std::cout << "VariableDeclaration: " << typeToString(type) << " " << name;
-    
-    if (is_array) {
-        std::cout << "[" << array_size << "]";
-    }
-    
-    std::cout << std::endl;
+    std::cout << "VariableDeclaration: " << decl_type->toString() << " " << name << std::endl;
     
     if (initializer) {
         printIndent(indent + 1);
@@ -306,17 +306,13 @@ void VariableDeclaration::print(int indent) const {
     }
 }
 
-// Function declaration implementation
 void FunctionDeclaration::print(int indent) const {
     printIndent(indent);
-    std::cout << "FunctionDeclaration: " << typeToString(type) << " " << name << "(";
+    std::cout << "FunctionDeclaration: " << decl_type->toString() << " " << name << "(";
     
     for (size_t i = 0; i < parameters.size(); i++) {
         if (i > 0) std::cout << ", ";
-        std::cout << typeToString(parameters[i].type) << " " << parameters[i].name;
-        if (parameters[i].is_array) {
-            std::cout << "[]";
-        }
+        std::cout << parameters[i].type->toString() << " " << parameters[i].name;
     }
     
     std::cout << ")" << std::endl;
@@ -328,23 +324,6 @@ void FunctionDeclaration::print(int indent) const {
     }
 }
 
-// Struct declaration implementation
-void StructDeclaration::print(int indent) const {
-    printIndent(indent);
-    std::cout << "StructDeclaration: " << name << std::endl;
-    
-    if (!members.empty()) {
-        printIndent(indent + 1);
-        std::cout << "Members:" << std::endl;
-        for (const auto& member : members) {
-            if (member) {
-                member->print(indent + 2);
-            }
-        }
-    }
-}
-
-// Program implementation
 void Program::print(int indent) const {
     printIndent(indent);
     std::cout << "Program:" << std::endl;

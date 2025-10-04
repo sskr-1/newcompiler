@@ -10,12 +10,13 @@ class ASTNode;
 class Expression;
 class Statement;
 class Declaration;
+class Type;
 
 // Smart pointer types
-using ASTNodePtr = std::unique_ptr<ASTNode>;
 using ExprPtr = std::unique_ptr<Expression>;
 using StmtPtr = std::unique_ptr<Statement>;
 using DeclPtr = std::unique_ptr<Declaration>;
+using TypePtr = std::unique_ptr<Type>;
 
 // Base AST Node
 class ASTNode {
@@ -24,27 +25,64 @@ public:
     virtual void print(int indent = 0) const = 0;
 };
 
+// Type system
+class Type : public ASTNode {
+public:
+    enum Kind {
+        VOID_TYPE,
+        CHAR_TYPE,
+        SHORT_TYPE,
+        INT_TYPE,
+        LONG_TYPE,
+        FLOAT_TYPE,
+        DOUBLE_TYPE,
+        POINTER_TYPE,
+        ARRAY_TYPE,
+        FUNCTION_TYPE,
+        STRUCT_TYPE,
+        UNION_TYPE,
+        ENUM_TYPE
+    };
+    
+    Kind kind;
+    bool is_const = false;
+    bool is_unsigned = false;
+    
+    Type(Kind k) : kind(k) {}
+    virtual std::string toString() const;
+    void print(int indent = 0) const override;
+};
+
+class PointerType : public Type {
+public:
+    TypePtr pointee_type;
+    
+    PointerType(TypePtr pointee) : Type(POINTER_TYPE), pointee_type(std::move(pointee)) {}
+    std::string toString() const override;
+};
+
+class ArrayType : public Type {
+public:
+    TypePtr element_type;
+    int size;
+    
+    ArrayType(TypePtr element, int sz) : Type(ARRAY_TYPE), element_type(std::move(element)), size(sz) {}
+    std::string toString() const override;
+};
+
 // Expression base class
 class Expression : public ASTNode {
 public:
-    enum Type {
-        INT_TYPE,
-        FLOAT_TYPE,
-        CHAR_TYPE,
-        VOID_TYPE,
-        POINTER_TYPE,
-        ARRAY_TYPE
-    };
-    
-    Type type = INT_TYPE;
+    TypePtr type;
+    bool is_lvalue = false;
 };
 
 // Literal expressions
 class IntLiteral : public Expression {
 public:
-    int value;
+    long long value;
     
-    IntLiteral(int val) : value(val) { type = INT_TYPE; }
+    IntLiteral(long long val) : value(val) {}
     void print(int indent = 0) const override;
 };
 
@@ -52,7 +90,7 @@ class FloatLiteral : public Expression {
 public:
     double value;
     
-    FloatLiteral(double val) : value(val) { type = FLOAT_TYPE; }
+    FloatLiteral(double val) : value(val) {}
     void print(int indent = 0) const override;
 };
 
@@ -68,16 +106,15 @@ class CharLiteral : public Expression {
 public:
     char value;
     
-    CharLiteral(char val) : value(val) { type = CHAR_TYPE; }
+    CharLiteral(char val) : value(val) {}
     void print(int indent = 0) const override;
 };
 
-// Identifier expression
 class Identifier : public Expression {
 public:
     std::string name;
     
-    Identifier(const std::string& n) : name(n) {}
+    Identifier(const std::string& n) : name(n) { is_lvalue = true; }
     void print(int indent = 0) const override;
 };
 
@@ -88,7 +125,10 @@ public:
         ADD, SUB, MUL, DIV, MOD,
         EQ, NE, LT, LE, GT, GE,
         AND, OR,
-        ASSIGN, PLUS_ASSIGN, MINUS_ASSIGN, MULT_ASSIGN, DIV_ASSIGN
+        BITWISE_AND, BITWISE_OR, BITWISE_XOR, LSHIFT, RSHIFT,
+        ASSIGN, PLUS_ASSIGN, MINUS_ASSIGN, MULT_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
+        LSHIFT_ASSIGN, RSHIFT_ASSIGN, AND_ASSIGN, OR_ASSIGN, XOR_ASSIGN,
+        COMMA
     };
     
     Operator op;
@@ -104,7 +144,8 @@ public:
 class UnaryOp : public Expression {
 public:
     enum Operator {
-        PLUS, MINUS, NOT, PRE_INC, PRE_DEC, POST_INC, POST_DEC,
+        PLUS, MINUS, NOT, BITWISE_NOT,
+        PRE_INC, PRE_DEC, POST_INC, POST_DEC,
         DEREF, ADDRESS_OF
     };
     
@@ -118,10 +159,10 @@ public:
 // Function call
 class FunctionCall : public Expression {
 public:
-    std::string name;
+    ExprPtr function;
     std::vector<ExprPtr> arguments;
     
-    FunctionCall(const std::string& n) : name(n) {}
+    FunctionCall(ExprPtr func) : function(std::move(func)) {}
     void print(int indent = 0) const override;
 };
 
@@ -132,7 +173,7 @@ public:
     ExprPtr index;
     
     ArrayAccess(ExprPtr arr, ExprPtr idx) 
-        : array(std::move(arr)), index(std::move(idx)) {}
+        : array(std::move(arr)), index(std::move(idx)) { is_lvalue = true; }
     void print(int indent = 0) const override;
 };
 
@@ -141,16 +182,15 @@ class MemberAccess : public Expression {
 public:
     ExprPtr object;
     std::string member;
-    bool is_pointer; // true for ->, false for .
+    bool is_pointer;
     
     MemberAccess(ExprPtr obj, const std::string& mem, bool ptr) 
-        : object(std::move(obj)), member(mem), is_pointer(ptr) {}
+        : object(std::move(obj)), member(mem), is_pointer(ptr) { is_lvalue = true; }
     void print(int indent = 0) const override;
 };
 
 // Statement base class
 class Statement : public ASTNode {
-public:
 };
 
 // Expression statement
@@ -175,7 +215,7 @@ class IfStatement : public Statement {
 public:
     ExprPtr condition;
     StmtPtr then_stmt;
-    StmtPtr else_stmt; // can be null
+    StmtPtr else_stmt;
     
     IfStatement(ExprPtr cond, StmtPtr then_s, StmtPtr else_s = nullptr)
         : condition(std::move(cond)), then_stmt(std::move(then_s)), else_stmt(std::move(else_s)) {}
@@ -196,9 +236,9 @@ public:
 // For statement
 class ForStatement : public Statement {
 public:
-    StmtPtr init;     // can be null
-    ExprPtr condition; // can be null
-    ExprPtr update;   // can be null
+    StmtPtr init;
+    ExprPtr condition;
+    ExprPtr update;
     StmtPtr body;
     
     ForStatement(StmtPtr i, ExprPtr c, ExprPtr u, StmtPtr b)
@@ -209,7 +249,7 @@ public:
 // Return statement
 class ReturnStatement : public Statement {
 public:
-    ExprPtr value; // can be null for void return
+    ExprPtr value;
     
     ReturnStatement(ExprPtr val = nullptr) : value(std::move(val)) {}
     void print(int indent = 0) const override;
@@ -230,50 +270,38 @@ public:
 class Declaration : public Statement {
 public:
     std::string name;
-    Expression::Type type;
+    TypePtr decl_type;
     
-    Declaration(const std::string& n, Expression::Type t) : name(n), type(t) {}
+    Declaration(const std::string& n, TypePtr t) : name(n), decl_type(std::move(t)) {}
 };
 
 // Variable declaration
 class VariableDeclaration : public Declaration {
 public:
-    ExprPtr initializer; // can be null
-    bool is_array;
-    int array_size;
+    ExprPtr initializer;
     
-    VariableDeclaration(const std::string& n, Expression::Type t, ExprPtr init = nullptr)
-        : Declaration(n, t), initializer(std::move(init)), is_array(false), array_size(0) {}
+    VariableDeclaration(const std::string& n, TypePtr t, ExprPtr init = nullptr)
+        : Declaration(n, std::move(t)), initializer(std::move(init)) {}
     void print(int indent = 0) const override;
 };
 
 // Parameter for function declarations
 struct Parameter {
     std::string name;
-    Expression::Type type;
-    bool is_array;
+    TypePtr type;
     
-    Parameter(const std::string& n, Expression::Type t, bool arr = false)
-        : name(n), type(t), is_array(arr) {}
+    Parameter(const std::string& n, TypePtr t)
+        : name(n), type(std::move(t)) {}
 };
 
 // Function declaration
 class FunctionDeclaration : public Declaration {
 public:
     std::vector<Parameter> parameters;
-    std::unique_ptr<Block> body; // can be null for forward declarations
+    std::unique_ptr<Block> body;
     
-    FunctionDeclaration(const std::string& n, Expression::Type ret_type)
-        : Declaration(n, ret_type) {}
-    void print(int indent = 0) const override;
-};
-
-// Struct declaration
-class StructDeclaration : public Declaration {
-public:
-    std::vector<std::unique_ptr<VariableDeclaration>> members;
-    
-    StructDeclaration(const std::string& n) : Declaration(n, Expression::VOID_TYPE) {}
+    FunctionDeclaration(const std::string& n, TypePtr ret_type)
+        : Declaration(n, std::move(ret_type)) {}
     void print(int indent = 0) const override;
 };
 
@@ -287,28 +315,34 @@ public:
 
 // Union type for parser
 union YYSTYPE {
-    int int_val;
+    long long int_val;
     double float_val;
+    double double_val;
     char char_val;
     char* str_val;
+    
     ASTNode* node;
     Expression* expr;
     Statement* stmt;
     Declaration* decl;
     Program* program;
     Block* block;
+    Type* type_node;
+    
     std::vector<Parameter>* param_list;
     Parameter* param;
-    Expression::Type type;
+    std::vector<ExprPtr>* expr_list;
+    std::vector<StmtPtr>* stmt_list;
+    std::vector<DeclPtr>* decl_list;
+    
     BinaryOp::Operator bin_op;
     UnaryOp::Operator un_op;
+    Type::Kind type_kind;
 };
 
 #define YYSTYPE_IS_DECLARED 1
 
 // Helper functions
-std::string typeToString(Expression::Type type);
-std::string binOpToString(BinaryOp::Operator op);
-std::string unOpToString(UnaryOp::Operator op);
+void printIndent(int indent);
 
 #endif // AST_H
